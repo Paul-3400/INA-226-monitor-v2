@@ -61,8 +61,8 @@ Eigenschaften:
 | microSD-Karte | 1 | mind. 16 GB, Class 10 |
 | 5-V-Netzteil für den Pi | 1 | passender Anschluss (Micro-USB/USB-C) |
 | Litze 24 AWG | 8 | I²C-Verbindung XIAO ↔ INA226-Module |
-| Lötkolben + Lötzinn | – | für die A0/A1-Brücken auf den INA226-Modulen |
-| Kleinschraubendreher | – | für die Schraubklemmen |
+| PCB - Prototyp - Board | 2 | Befestigung div. Bauteile |
+| Distanzhalter M2 | – | div. Längen |
 | USB-C-Kabel | 1 | zum Flashen und Laden des XIAO |
 
 > **Bezugsquelle INA226-Module:** gängige China-Versender, Suchbegriff «INA226 module». Wichtig: Variante **R010** (0.01 Ω Shunt) und **A0/A1-Lötstellen**.
