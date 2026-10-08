@@ -1,0 +1,5 @@
+venv/
+data/*.csv
+data/recording_state.json
+__pycache__/
+*.pyc

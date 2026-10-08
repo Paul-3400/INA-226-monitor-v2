@@ -1,0 +1,413 @@
+
+<!DOCTYPE html>
+<!--
+  INA226 Monitor – Dashboard (Steuer-Einheit Pi)
+  Kanal 1 / Kanal 2, Messintervall-Presets, Verlaufsgrafik (Canvas, keine externe Library)
+  Autor: Paul Simmen mit Vibe (GLM-5-latest-short), 07.10.2026
+  Ablage: templates/index.html im Repo ina226-monitor
+-->
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INA226 Monitor</title>
+<style>
+  :root {
+    --bg: #12141a; --card: #1d2130; --border: #2c3350;
+    --text: #e8eaf2; --muted: #8b93ad;
+    --ch1: #4da3ff; --ch2: #ffa64d; --ok: #3ddc84; --bad: #ff5c5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); padding: 20px;
+  }
+  .container { max-width: 920px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
+
+  .status-bar {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+    padding: 10px 14px; background: var(--card); border-radius: 8px;
+    border: 1px solid var(--border); font-size: 0.9rem;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .dot.online { background: var(--ok); }
+  .dot.offline { background: var(--bad); }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+  }
+  .card.ch1 h2 { color: var(--ch1); }
+  .card.ch2 h2 { color: var(--ch2); }
+  .card h2 { font-size: 1.05rem; margin-bottom: 12px; }
+  .value-row {
+    display: flex; justify-content: space-between; padding: 6px 0;
+    border-bottom: 1px dashed var(--border); font-size: 0.92rem;
+  }
+  .value-row:last-of-type { border-bottom: none; }
+
+  .value-row label { color: var(--muted); }
+  .value-row .num { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .unit { color: var(--muted); font-size: 0.8rem; margin-left: 4px; }
+  .timestamp { color: var(--muted); font-size: 0.78rem; margin-top: 10px; }
+
+  .panel {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; margin-bottom: 18px;
+  }
+  .panel h3 { font-size: 0.95rem; margin-bottom: 12px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button {
+    background: #2a3049; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 14px; font-size: 0.88rem; cursor: pointer;
+  }
+  button:hover { background: #353d5c; }
+  button.active { background: #3b62a8; border-color: #5b84c9; }
+  button.primary { background: #3a6b3f; border-color: #56a05e; }
+  .interval-info { color: var(--muted); font-size: 0.85rem; margin-left: 8px; }
+
+  .chart-header { display: flex; justify-content: space-between; align-items: center;
+                  flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  select {
+    background: #2a3049; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 10px; font-size: 0.88rem;
+  }
+  #chart { width: 100%; height: 260px; display: block; }
+  .legend { display: flex; gap: 18px; margin-top: 8px; font-size: 0.82rem; color: var(--muted); }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 3px;
+    border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+  .legend .l1::before { background: var(--ch1); }
+  .legend .l2::before { background: var(--ch2); }
+  .hint { color: var(--muted); font-size: 0.78rem; margin-top: 8px; }
+
+  .file-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 0; border-bottom: 1px dashed var(--border); font-size: 0.85rem;
+  }
+  .file-row:last-child { border-bottom: none; }
+  .file-row a { color: v
+ar(--ch1); margin-left: 14px; text-decoration: none; cursor: pointer; }
+  .file-row a.del { color: var(--bad); }
+  .record-status { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>INA226 Monitor</h1>
+  <div class="subtitle">Mobile Mess-Einheit &middot; XIAO ESP32S3 via MQTT</div>
+
+  <div class="status-bar">
+    <div class="dot" id="unit-dot"></div>
+    <span>Mess-Einheit: <strong id="unit-status">unbekannt</strong></span>
+    <span class="interval-info" id="unit-info"></span>
+  </div>
+
+  <div class="cards">
+    <div class="card ch1">
+      <h2>Kanal 1</h2>
+      <div class="value-row"><label>Spannung</label>
+        <span><span class="num" id="voltage-1">--</span><span class="unit">V</span></span></div>
+      <div class="value-row"><label>Strom</label>
+        <span><span class="num" id="current-1">--</span><span class="unit">mA</span></span></div>
+      <div class="value-row"><label>Leistung</label>
+        <span><span class="num" id="power-1">--</span><span class="unit">W</span></span></div>
+      <div class="value-row"><label>Shunt</label>
+        <span><span class="num" id="shunt-1">--</span><span class="unit">mV</span></span></div>
+      <div class="timestamp" id="timestamp-1">Letzte Messung: --</div>
+    </div>
+
+    <div class="card ch2">
+      <h2>Kanal 2</h2>
+      <div class="value-row"><label>Spannung</label>
+        <span><span class="num" id="voltage-2">--</span><span class="unit">V</span></span></div>
+      <div class="value-row"><label>Strom</label>
+        <span><span class="num" id="current-2">--</span><span class="unit">mA</span></span></div>
+      <div class="value-row"><label>Leistung</label>
+        <span><span class="num" id="power-2">--</span><span class="unit">W</span></span></div>
+      <div class="value-row"><label>Shunt</label>
+        <span><span class="num" id="shunt-2">--</span><span class="unit">mV</span></span></div>
+      <div class="timestamp" id="timestamp-2">Letzte M
+essung: --</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Messung</h3>
+    <div class="controls">
+      <button class="preset" data-seconds="12">5&times;/Min (12 s)</button>
+      <button class="preset" data-seconds="30">2&times;/Min (30 s)</button>
+      <button class="preset" data-seconds="60">1&times;/Min (60 s)</button>
+      <button class="preset" data-seconds="300">12&times;/Std (300 s)</button>
+      <span class="interval-info" id="interval-info"></span>
+      <button id="btn-auto" class="active">Auto: an</button>
+      <button id="btn-measure" class="primary">Jetzt messen</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="chart-header">
+      <h3>Verlauf</h3>
+      <div>
+        <select id="chart-metric">
+          <option value="voltage_V">Spannung (V)</option>
+          <option value="current_mA">Strom (mA)</option>
+          <option value="power_W">Leistung (W)</option>
+        </select>
+        <select id="chart-points">
+          <option value="60">letzte 60 Punkte</option>
+          <option value="120" selected>letzte 120 Punkte</option>
+          <option value="300">letzte 300 Punkte</option>
+        </select>
+      </div>
+    </div>
+    <canvas id="chart" width="860" height="260"></canvas>
+    <div class="legend">
+      <span class="l1">Kanal 1</span>
+      <span class="l2">Kanal 2</span>
+    </div>
+    <div class="hint">Der Verlauf wird auf der SD-Karte des Pi gesichert und &uuml;berlebt
+      App-Neustarts (die letzten 600 Punkte werden beim Start neu geladen).</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="chart-header">
+      <h3>Aufzeichnung (CSV)</h3>
+      <button id="btn-record" class="primary">Aufzeichnung starten</button>
+    </div>
+    <div class="record-status" id="record-status">Bereit &ndash; eine Zeile pro Messzyklus (beide Kanäle)</div>
+    <div id="file-list"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Werte und Status aktualisieren
+// ===
+=========================================================
+const CHANNELS = ["1", "2"];        // UI-Nummern
+const API_KEYS = ["1A", "10A"];     // Schluessel in der JSON-Antwort
+
+function setNum(id, val, digits) {
+  const el = document.getElementById(id);
+  el.textContent = (typeof val === "number" && isFinite(val)) ? val.toFixed(digits) : "--";
+}
+
+async function updateValues() {
+  try {
+    const r = await fetch("/api/values");
+    const d = await r.json();
+    // Kanal-Karten
+    for (let i = 0; i < 2; i++) {
+      const ch = d[API_KEYS[i]] || {};
+      const n = CHANNELS[i];
+      setNum("voltage-" + n, ch.voltage_V, 3);
+      setNum("current-" + n, ch.current_mA, 1);
+      setNum("power-" + n, ch.power_W, 4);
+      setNum("shunt-" + n, ch.shunt_mV, 4);
+      document.getElementById("timestamp-" + n).textContent =
+        ch.timestamp ? "Letzte Messung: " + ch.timestamp : "Letzte Messung: --";
+    }
+    // Status der Mess-Einheit
+    const unit = d.unit || {};
+    const dot = document.getElementById("unit-dot");
+    document.getElementById("unit-status").textContent = unit.online ? "online" : "offline";
+    dot.className = "dot " + (unit.online ? "online" : "offline");
+    // Intervall-Info
+    const secs = (d.interval && d.interval.seconds) ? d.interval.seconds : "?";
+    document.getElementById("interval-info").textContent =
+      "Intervall: " + secs + " s | Auto: " + (d.auto ? "an" : "aus");
+    // Preset-Button highlighten
+    document.querySelectorAll(".preset").forEach(b => {
+      b.classList.toggle("active", parseInt(b.dataset.seconds) === secs);
+    });
+    const autoBtn = document.getElementById("btn-auto");
+    autoBtn.textContent = "Auto: " + (d.auto ? "an" : "aus");
+    autoBtn.classList.toggle("active", !!d.auto);
+  } catch (e) { /* Pi erreichbar? Naechster Poll versucht es erneut */ }
+}
+
+// ============================================================
+// Steuerbefehle
+// ============================================================
+async function po
+st(url, body) {
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body || {})
+    });
+    updateValues();
+  } catch (e) {}
+}
+
+document.querySelectorAll(".preset").forEach(btn => {
+  btn.addEventListener("click", () =>
+    post("/api/interval", {seconds: parseInt(btn.dataset.seconds)}));
+});
+document.getElementById("btn-measure").addEventListener("click", () => post("/api/measure"));
+document.getElementById("btn-auto").addEventListener("click", () => {
+  const isOn = document.getElementById("btn-auto").classList.contains("active");
+  post("/api/auto", {auto: !isOn});
+});
+
+// ============================================================
+// Verlaufsgrafik (Canvas, ohne externe Library)
+// ============================================================
+const canvas = document.getElementById("chart");
+const ctx = canvas.getContext("2d");
+const COLORS = { "1A": "#4da3ff", "10A": "#ffa64d" };
+
+async function drawChart() {
+  try {
+    const points = document.getElementById("chart-points").value;
+    const metric = document.getElementById("chart-metric").value;
+    const r = await fetch("/api/history?points=" + points);
+    const d = await r.json();
+
+    const W = canvas.width, H = canvas.height;
+    const padL = 52, padR = 12, padT = 12, padB = 26;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "#12141a";
+    ctx.fillRect(0, 0, W, H);
+
+    // Daten zusammensuchen
+    const series = {};
+    let all = [];
+    for (const key of ["1A", "10A"]) {
+      series[key] = (d[key] || []).map(p => {
+        const v = parseFloat(p[metric]);
+        return isFinite(v) ? v : null;
+      });
+      all = all.concat(series[key].filter(v => v !== null));
+    }
+    const maxLen = Math.max(series["1A"].length, series["10A"].length, 2);
+
+    // Y-Skalierung (mit etwas Rand; min/max identisch -> kuenstlicher Bereich)
+    let lo = 0, hi = 1;
+    if (all.length) {
+      lo = Math.min(0, Math.min.apply(null, all));
+   
+   hi = Math.max(0.0001, Math.max.apply(null, all));
+      const range = hi - lo || 1;
+      lo -= range * 0.08; hi += range * 0.08;
+    }
+
+    // Gitter + Achsen
+    ctx.strokeStyle = "#2c3350";
+    ctx.fillStyle = "#8b93ad";
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "right";
+    const gridLines = 5;
+    for (let i = 0; i <= gridLines; i++) {
+      const y = padT + (H - padT - padB) * i / gridLines;
+      ctx.beginPath();
+      ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      const val = hi - (hi - lo) * i / gridLines;
+      ctx.fillText(formatNum(val), padL - 6, y + 4);
+    }
+
+    // Linien zeichnen
+    for (const key of ["1A", "10A"]) {
+      const data = series[key];
+      if (data.length < 1) continue;
+      const stepX = (W - padL - padR) / (maxLen - 1);
+      const offsetX = (maxLen - data.length) * stepX;   // rechtsbuendig (jung rechts)
+      ctx.strokeStyle = COLORS[key];
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      let started = false;
+      for (let i = 0; i < data.length; i++) {
+        const v = data[i];
+        if (v === null) { started = false; continue; }
+        const x = padL + offsetX + i * stepX;
+        const y = padT + (H - padT - padB) * (1 - (v - lo) / (hi - lo));
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    // X-Beschriftung: Zeitstempel des aeltesten und juengsten Punkts
+    ctx.textAlign = "left";
+    const s1 = d["1A"] || [];
+    if (s1.length > 1) {
+      ctx.fillText(s1[0].timestamp.slice(11), padL, H - 8);
+      ctx.textAlign = "right";
+      ctx.fillText(s1[s1.length - 1].timestamp.slice(11), W - padR, H - 8);
+    } else {
+      ctx.fillText("sammle Messpunkte ...", padL, H - 8);
+    }
+  } catch (e) {}
+}
+
+function formatNum(v) {
+  const a = Math.abs(v);
+  if (a >= 100) return v.toFixed(0);
+  if (a >= 1) return v.toFixed(2);
+  return v.toFixed(3);
+}
+
+// ============================================================
+
+// Aufzeichnung (CSV) + Dateiliste
+// ============================================================
+let recordingActive = false;
+
+async function updateRecording() {
+  try {
+    const r = await fetch("/api/files");
+    const files = await r.json();
+    const fl = document.getElementById("file-list");
+    fl.innerHTML = "";
+    (files || []).forEach(f => {
+      const row = document.createElement("div");
+      row.className = "file-row";
+      row.innerHTML =
+        "<span>" + f.name + " <span class='unit'>" + f.size_kb + " kB</span></span>" +
+        "<span><a href='/api/files/download/" + encodeURIComponent(f.name) + "'>herunterladen</a>" +
+        "<a class='del' data-name='" + f.name + "'>l&ouml;schen</a></span>";
+      fl.appendChild(row);
+    });
+  } catch (e) {}
+}
+
+const recBtn = document.getElementById("btn-record");
+recBtn.addEventListener("click", async () => {
+  await post(recordingActive ? "/api/record/stop" : "/api/record/start");
+  recordingActive = !recordingActive;
+  recBtn.textContent = recordingActive ? "Aufzeichnung stoppen" : "Aufzeichnung starten";
+  recBtn.classList.toggle("primary", !recordingActive);
+  document.getElementById("record-status").textContent = recordingActive
+    ? "Aufzeichnung läuft \u2013 Datei wird im Hintergrund gefüllt"
+    : "Bereit \u2013 eine Zeile pro Messzyklus (beide Kanäle)";
+});
+
+document.getElementById("file-list").addEventListener("click", async (e) => {
+  if (e.target.classList.contains("del")) {
+    e.preventDefault();
+    await fetch("/api/files/delete/" + encodeURIComponent(e.target.dataset.name),
+                {method: "DELETE"});
+    updateRecording();
+  }
+});
+
+// ============================================================
+// Polling starten
+// ============================================================
+updateValues();
+drawChart();
+updateRecording();
+setInterval(updateValues, 2000);
+setInterval(drawChart, 3000);
+setInterval(updateRecording, 15000);
+document.getElementById("chart-metric").addEventListener("
+change", drawChart);
+document.getElementById("chart-points").addEventListener("change", drawChart);
+</script>
+</body>
+</html>

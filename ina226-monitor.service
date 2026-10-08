@@ -1,0 +1,22 @@
+# ============================================================
+# INA226 Monitor v2 – systemd Service
+# Autor: Paul Simmen mit Vibe (GLM-5-latest-short), 08.10.2026
+# WICHTIG: User, WorkingDirectory und ExecStart an den eigenen
+# Benutzernamen anpassen, falls er nicht "paul-rppi" lautet!
+# ============================================================
+
+[Unit]
+Description=INA226 Strom- und Spannungsmonitor v2
+After=network.target mosquitto.service
+
+[Service]
+Type=simple
+User=paul-rppi
+WorkingDirectory=/home/paul-rppi/INA-226-monitor-v2
+ExecStart=/home/paul-rppi/INA-226-monitor-v2/venv/bin/python3 /home/paul-rppi/INA-226-monitor-v2/app.py
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
