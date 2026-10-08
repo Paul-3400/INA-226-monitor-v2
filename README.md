@@ -62,7 +62,7 @@ Eigenschaften:
 | 5-V-Netzteil für den Pi | 1 | passender Anschluss (Micro-USB/USB-C) |
 | Litze 24 AWG | 8 | I²C-Verbindung XIAO ↔ INA226-Module |
 | PCB - Prototyp - Board | 2 | Befestigung div. Bauteile |
-| Distanzhalter M2 | – | div. Längen |
+| Distanzhalter, Schrauben, Muttern M2 | – | div. Längen |
 | USB-C-Kabel | 1 | zum Flashen und Laden des XIAO |
 
 > **Bezugsquelle INA226-Module:** gängige China-Versender, Suchbegriff «INA226 module». Wichtig: Variante **R010** (0.01 Ω Shunt) und **A0/A1-Lötstellen**.
