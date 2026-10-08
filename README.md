@@ -96,8 +96,8 @@ Beide Module haben ab Werk die I²C-Adresse **0x40** – Konflikt. Deshalb bei e
 **Messstrecke (pro Modul, an den Schraubklemmen):**
 
 ```text
-Quelle (+) ──► VIN-Klemme ─[Shunt]─ VOUT-Klemme ──► Verbraucher (+)
-Quelle (−) ──► GND ◄──────────────────────────── Verbraucher (−)
+Quelle (+) ──► VIN-Klemme blau ─[Shunt]─ VOUT-Klemme gruen ──► Verbraucher (+)
+Quelle (−) ──► GND-Klemme blau Mitte <> GND-Klemme gruen Mitte ──► Verbraucher (−)
 ```
 
 > Masse von Quelle und Verbraucher gemeinsam auf GND. Max. 36 V, ~8 A pro Kanal.
