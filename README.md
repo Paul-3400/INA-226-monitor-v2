@@ -1,7 +1,7 @@
 
 # ⚡ INA226 Monitor v2 – Mobile Strom- und Spannungsmessstation
 
-> Autor: Paul Simmen mit Vibe (GLM-5-latest-short), 08.10.2026
+> Autor: Paul Simmen mit Vibe (GLM-5-latest-short), 26.10.2026
 > Ein «Brain-Gym»-Projekt – den Kopf fit halten mit Elektronik und Code. 🧠💪
 
 ![Die mobile Mess-Einheit](docs/INA226-Monitor.png)
@@ -194,6 +194,21 @@ Details zur Bedienung: siehe **[Bedienungsanleitung.md](Bedienungsanleitung.md)*
 | Werte weichen ab | Kalibrierung prüfen: bekannte Last messen und mit Referenzmessgerät vergleichen |
 
 ---
+
+## ☀️ Praxisbeispiel: Solarbatterie-Ladung bei wechselhaftem Wetter
+
+Am 09.10.2026 habe ich mit der Station das Laden meiner Solarbatterie überwacht – ein Tag mit raschem Wechsel zwischen dichten Wolken und kräftigem Sonnenlicht. Die Verlaufsgrafik des Dashboards macht diese Dynamik unmittelbar sichtbar: Zieht eine Wolke vor die Sonne, bricht der Ladestrom ein; in den Sonnenphasen steigt er spürbar an. So lassen sich Solarcharger und Batterie unter realen Bedingungen beim Laden beobachten.
+
+Drei Schnappschüsse aus dem Verlauf des Tages:
+
+![Dashboard um 09:13 Uhr](docs/Bildschirmfoto%202026-10-09%20um%2009.13.15.png)
+*09:13 Uhr – Vormittag*
+
+![Dashboard um 10:05 Uhr](docs/Bildschirmfoto%202026-10-09%20um%2010.05.57.png)
+*10:05 Uhr – Wolken und Sonne im Wechsel*
+
+![Dashboard um 12:45 Uhr](docs/Bildschirmfoto%202026-10-09%20um%2012.45.24.png)
+*12:45 Uhr – Mittag*
 
 ## Dokumentation
 
